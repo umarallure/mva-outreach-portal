@@ -1,0 +1,18 @@
+{
+  "name": "outreach-browser-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Stateless WebSocket relay that bridges the portal's browser clients to GoLogin cloud-browser CDP sockets. Holds the GoLogin token; gated by short-lived signed tickets issued by the Next app.",
+  "main": "src/server.mjs",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "dev": "node --watch src/server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
