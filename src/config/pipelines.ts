@@ -28,6 +28,11 @@ export type OutreachAccountNavigationGroup = {
     title: string;
     sidebarLabel: string;
     href: string;
+    links: Array<{
+      id: "flowchat" | "sales-copy";
+      label: string;
+      href: string;
+    }>;
     status: OutreachAccountStatus;
   }>;
 };
@@ -106,7 +111,7 @@ export const outreachAccounts = [
   defineOutreachAccount({
     id: "publisher-keller",
     ownerSlug: "keller",
-    ownerName: "Keller",
+    ownerName: "Keller Nicolai (MVA)",
     pipelineSlug: "publisher-keller",
     pipelineName: "Publisher Keller",
     sidebarLabel: "Publisher Keller",
@@ -115,7 +120,7 @@ export const outreachAccounts = [
   defineOutreachAccount({
     id: "global-fe-keller",
     ownerSlug: "keller",
-    ownerName: "Keller",
+    ownerName: "Keller Nicolai (MVA)",
     pipelineSlug: "global-fe-keller",
     pipelineName: "Global FE Keller",
     sidebarLabel: "Global FE Keller",
@@ -124,7 +129,7 @@ export const outreachAccounts = [
   defineOutreachAccount({
     id: "monica-personal-connections",
     ownerSlug: "monica",
-    ownerName: "Monica",
+    ownerName: "Monica Gonzalez (MVA)",
     pipelineSlug: "personal-connections",
     pipelineName: "Monica's Personal Connections",
     sidebarLabel: "Monica's Personal Connections",
@@ -133,7 +138,7 @@ export const outreachAccounts = [
   defineOutreachAccount({
     id: "josh-bpo-colombia",
     ownerSlug: "josh",
-    ownerName: "Josh",
+    ownerName: "Josh Streit (FEX)",
     pipelineSlug: "bpo-colombia",
     pipelineName: "BPO Colombia",
     sidebarLabel: "BPO Colombia",
@@ -142,7 +147,7 @@ export const outreachAccounts = [
   defineOutreachAccount({
     id: "ben-bpo-dominican-republic",
     ownerSlug: "ben",
-    ownerName: "Ben",
+    ownerName: "Ben Wunder (FEX)",
     pipelineSlug: "bpo-dominican-republic",
     pipelineName: "BPO Dominican Republic",
     sidebarLabel: "BPO Dominican Republic",
@@ -151,7 +156,7 @@ export const outreachAccounts = [
   defineOutreachAccount({
     id: "ben-bpo-south-africa",
     ownerSlug: "ben",
-    ownerName: "Ben",
+    ownerName: "Ben Wunder (FEX)",
     pipelineSlug: "bpo-south-africa",
     pipelineName: "BPO South Africa",
     sidebarLabel: "BPO South Africa",
@@ -160,7 +165,7 @@ export const outreachAccounts = [
   defineOutreachAccount({
     id: "flutra-bpo-el-salvador",
     ownerSlug: "flutra",
-    ownerName: "Flutra",
+    ownerName: "Flutra Sllamniku (FEX)",
     pipelineSlug: "bpo-el-salvador",
     pipelineName: "BPO El Salvador",
     sidebarLabel: "BPO El Salvador",
@@ -169,7 +174,7 @@ export const outreachAccounts = [
   defineOutreachAccount({
     id: "flutra-bpo-venezuela",
     ownerSlug: "flutra",
-    ownerName: "Flutra",
+    ownerName: "Flutra Sllamniku (FEX)",
     pipelineSlug: "bpo-venezuela",
     pipelineName: "BPO Venezuela",
     sidebarLabel: "BPO Venezuela",
@@ -184,6 +189,10 @@ export const accountPath = (
 ) => `/pipelines/${account.ownerSlug}/${account.pipelineSlug}`;
 
 export const pipelinePath = accountPath;
+
+export const salesCopyPath = (
+  account: Pick<OutreachAccountDefinition, "ownerSlug" | "pipelineSlug">,
+) => `${accountPath(account)}/sales-copy`;
 
 export function getAccountNavigation(): OutreachAccountNavigationGroup[] {
   const groups = new Map<string, OutreachAccountNavigationGroup>();
@@ -202,6 +211,18 @@ export function getAccountNavigation(): OutreachAccountNavigationGroup[] {
       title: account.pipelineName,
       sidebarLabel: account.sidebarLabel,
       href: accountPath(account),
+      links: [
+        {
+          id: "flowchat",
+          label: "FlowChat",
+          href: accountPath(account),
+        },
+        {
+          id: "sales-copy",
+          label: "Sales Copy",
+          href: salesCopyPath(account),
+        },
+      ],
       status: account.status,
     });
 

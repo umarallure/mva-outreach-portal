@@ -22,7 +22,7 @@ Open [http://localhost:3000](http://localhost:3000).
    - `OUTREACH_SESSION_STALE_MINUTES` defaults to `120`
 4. Configure one `GOLOGIN_PROFILE_*` ID per outreach account.
 5. Add optional `DEFAULT_TARGET_URL_*`, `FLOWCHAT_URL_*`, and `LINKEDIN_URL_*` values per account.
-6. Apply `supabase/migrations/20260617_create_outreach_gologin_sessions.sql` to the shared Supabase project.
+6. Apply the Supabase migrations in `supabase/migrations/` to the shared Supabase project.
 
 `GOLOGIN_API_TOKEN`, `OUTREACH_SESSION_ENCRYPTION_KEY`, Live View URLs, launch URLs, and proxy/account secrets must never be exposed through `NEXT_PUBLIC_*` variables.
 

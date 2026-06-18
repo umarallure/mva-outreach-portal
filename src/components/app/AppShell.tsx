@@ -10,6 +10,8 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessagesSquare,
+  MonitorPlay,
   PanelLeftClose,
   PanelLeftOpen,
   UserCircle2,
@@ -23,6 +25,11 @@ type NavPipeline = {
   title: string;
   sidebarLabel: string;
   href: string;
+  links: Array<{
+    id: "flowchat" | "sales-copy";
+    label: string;
+    href: string;
+  }>;
   status: string;
 };
 
@@ -52,6 +59,10 @@ export function AppShell({ children, profile, navigation }: AppShellProps) {
   const initial = useMemo(() => userLabel.trim().charAt(0).toUpperCase() || "A", [userLabel]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const isExactActive = (href: string) => pathname === href;
+  const isPipelineActive = (pipeline: NavPipeline) =>
+    pathname === pipeline.href ||
+    pipeline.links.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
 
   const toggleGroup = (ownerSlug: string) => {
     setOpenGroups((current) => {
@@ -142,11 +153,12 @@ export function AppShell({ children, profile, navigation }: AppShellProps) {
             <div className="mt-4 space-y-2">
               {navigation.map((group) => {
                 const expanded = openGroups.has(group.ownerSlug);
-                const hasActiveChild = group.pipelines.some((pipeline) => isActive(pipeline.href));
+                const hasActiveChild = group.pipelines.some((pipeline) => isPipelineActive(pipeline));
 
                 return (
                   <div key={group.ownerSlug}>
                     <button
+                      aria-expanded={expanded}
                       className={`${linkBase} w-full ${
                         hasActiveChild
                           ? "border-white/10 bg-white/[0.04] text-white"
@@ -161,33 +173,94 @@ export function AppShell({ children, profile, navigation }: AppShellProps) {
                         {!sidebarCollapsed ? <span className="truncate">{group.ownerName}</span> : null}
                       </span>
                       {!sidebarCollapsed ? (
-                        <ChevronDown
-                          className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
-                        />
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-medium text-white/42">
+                            {group.pipelines.length}
+                          </span>
+                          <ChevronDown
+                            className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+                          />
+                        </span>
                       ) : null}
                     </button>
 
                     {!sidebarCollapsed && expanded ? (
-                      <div className="mt-1 space-y-1 pl-4">
-                        {group.pipelines.map((pipeline) => (
-                          <Link
-                            className={`flex min-h-8 items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
-                              isActive(pipeline.href)
-                                ? "border-[#AE4010]/25 bg-[#AE4010]/12 text-[#f4a261]"
-                                : "border-transparent text-white/54 hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
-                            }`}
-                            href={pipeline.href}
-                            key={pipeline.id}
-                            onClick={() => setMobileOpen(false)}
-                          >
-                            <span className="truncate">{pipeline.sidebarLabel}</span>
-                            {pipeline.status === "ready" ? (
-                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                            ) : (
-                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
-                            )}
-                          </Link>
-                        ))}
+                      <div className="ml-4 mt-2 space-y-2 border-l border-white/10 pl-3">
+                        {group.pipelines.map((pipeline) => {
+                          const activePipeline = isPipelineActive(pipeline);
+
+                          return (
+                            <div
+                              className={`relative rounded-lg border transition-colors ${
+                                activePipeline
+                                  ? "border-[#AE4010]/25 bg-[#AE4010]/10"
+                                  : "border-white/[0.06] bg-white/[0.018] hover:border-white/10 hover:bg-white/[0.035]"
+                              }`}
+                              key={pipeline.id}
+                            >
+                              <span className="absolute -left-[13px] top-4 h-px w-3 bg-white/10" />
+                              <Link
+                                className="flex min-h-8 items-center justify-between gap-2 rounded-t-lg px-2 py-1.5 transition-colors hover:bg-white/[0.035]"
+                                href={pipeline.href}
+                                onClick={() => setMobileOpen(false)}
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <MonitorPlay
+                                    className={`h-3.5 w-3.5 shrink-0 ${
+                                      activePipeline ? "text-[#f4a261]" : "text-white/36"
+                                    }`}
+                                  />
+                                  <span
+                                    className={`truncate text-sm ${
+                                      activePipeline ? "text-white" : "text-white/64"
+                                    }`}
+                                  >
+                                    {pipeline.sidebarLabel}
+                                  </span>
+                                </span>
+                                <span
+                                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                                    pipeline.status === "ready" ? "bg-emerald-400" : "bg-amber-400"
+                                  }`}
+                                  title={pipeline.status === "ready" ? "Ready" : "Setup pending"}
+                                />
+                              </Link>
+
+                              <div
+                                className={`grid grid-cols-2 gap-1 border-t px-2 py-2 ${
+                                  activePipeline ? "border-[#AE4010]/15" : "border-white/[0.05]"
+                                }`}
+                              >
+                                {pipeline.links.map((link) => {
+                                  const active =
+                                    link.id === "flowchat"
+                                      ? isExactActive(link.href)
+                                      : isActive(link.href);
+
+                                  return (
+                                    <Link
+                                      className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-[12px] transition-colors ${
+                                        active
+                                          ? "border-[#AE4010]/25 bg-[#AE4010]/12 text-[#f4a261]"
+                                          : "border-transparent text-white/45 hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
+                                      }`}
+                                      href={link.href}
+                                      key={link.id}
+                                      onClick={() => setMobileOpen(false)}
+                                    >
+                                      {link.id === "flowchat" ? (
+                                        <MonitorPlay className="h-3.5 w-3.5 shrink-0" />
+                                      ) : (
+                                        <MessagesSquare className="h-3.5 w-3.5 shrink-0" />
+                                      )}
+                                      <span className="truncate">{link.label}</span>
+                                    </Link>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : null}
                   </div>
