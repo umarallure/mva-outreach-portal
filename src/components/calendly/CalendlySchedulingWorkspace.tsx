@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -160,6 +160,33 @@ function formatDayDate(date: Date) {
 
 function inviteeLabel(meeting: CalendlyMeetingView) {
   return meeting.inviteeName?.trim() ? meeting.inviteeName : "Unknown invitee";
+}
+
+// Turn a Calendly invitee URI into a short, readable reference code (the leading
+// block of its UUID) instead of surfacing the raw API link.
+function shortInviteeRef(uri: string | null | undefined) {
+  if (!uri?.trim()) return null;
+  const lastSegment = uri.split("/").filter(Boolean).pop();
+  const head = lastSegment?.split("-")[0];
+  return head ? head.toUpperCase() : null;
+}
+
+function describeReschedule(meeting: CalendlyMeetingView): {
+  message: string;
+  refLabel: string | null;
+  ref: string | null;
+} {
+  const newRef = shortInviteeRef(meeting.newInviteeUri);
+  if (newRef) {
+    return { message: "This booking was moved to a new time.", refLabel: "New booking", ref: newRef };
+  }
+
+  const oldRef = shortInviteeRef(meeting.oldInviteeUri);
+  if (oldRef) {
+    return { message: "Rescheduled from an earlier booking.", refLabel: "Previous booking", ref: oldRef };
+  }
+
+  return { message: "This booking was rescheduled.", refLabel: null, ref: null };
 }
 
 type DayGroup = { key: string; date: Date | null; meetings: CalendlyMeetingView[] };
@@ -383,7 +410,13 @@ function Callout({
   );
 }
 
-function MeetingDetail({ meeting }: { meeting: CalendlyMeetingView | null }) {
+function MeetingDetail({
+  meeting,
+  mounted,
+}: {
+  meeting: CalendlyMeetingView | null;
+  mounted: boolean;
+}) {
   if (!meeting) {
     return (
       <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 rounded-[var(--dash-radius)] border border-dashed border-[var(--dash-border)] bg-[var(--dash-surface)] p-8 text-center backdrop-blur-[var(--dash-blur)]">
@@ -406,6 +439,8 @@ function MeetingDetail({ meeting }: { meeting: CalendlyMeetingView | null }) {
     ] as const
   ).filter(([, value]) => Boolean(value?.trim()));
 
+  const reschedule = meeting.rescheduled ? describeReschedule(meeting) : null;
+
   return (
     <div className="overflow-hidden rounded-[var(--dash-radius)] border border-[var(--dash-border)] bg-[var(--dash-surface)] backdrop-blur-[var(--dash-blur)]">
       <div className="border-b border-[var(--dash-border)] p-5">
@@ -420,7 +455,7 @@ function MeetingDetail({ meeting }: { meeting: CalendlyMeetingView | null }) {
         </h3>
         <p className="mt-2 flex items-center gap-1.5 font-mono text-xs text-[var(--dash-text-muted)]">
           <Clock3 className="h-3.5 w-3.5 shrink-0" />
-          {formatFullRange(meeting)}
+          {mounted ? formatFullRange(meeting) : "—"}
         </p>
       </div>
 
@@ -480,12 +515,12 @@ function MeetingDetail({ meeting }: { meeting: CalendlyMeetingView | null }) {
               {meeting.cancellation.reason?.trim() ? meeting.cancellation.reason : "No reason given"}
             </p>
             <p className="font-mono text-[11px] text-[#f2b6b0]/60">
-              {formatDateTime(meeting.cancellation.createdAt)}
+              {mounted ? formatDateTime(meeting.cancellation.createdAt) : "—"}
             </p>
           </Callout>
         ) : null}
 
-        {meeting.rescheduled ? (
+        {reschedule ? (
           <Callout
             title="Rescheduled"
             hex={statusMeta.rescheduled.hex}
@@ -493,12 +528,13 @@ function MeetingDetail({ meeting }: { meeting: CalendlyMeetingView | null }) {
             bg="bg-[#a78bfa]/10"
             text="text-[#d6cbfb]"
           >
-            <p className="break-words font-mono text-[11px] text-[#d6cbfb]/75">
-              From {meeting.oldInviteeUri?.trim() ? meeting.oldInviteeUri : "—"}
-            </p>
-            <p className="break-words font-mono text-[11px] text-[#d6cbfb]/75">
-              To {meeting.newInviteeUri?.trim() ? meeting.newInviteeUri : "—"}
-            </p>
+            <p className="text-xs text-[#d6cbfb]/85">{reschedule.message}</p>
+            {reschedule.ref ? (
+              <p className="text-[11px] text-[#d6cbfb]/60">
+                {reschedule.refLabel}{" "}
+                <span className="font-mono tracking-wide text-[#d6cbfb]/80">{reschedule.ref}</span>
+              </p>
+            ) : null}
           </Callout>
         ) : null}
 
@@ -511,7 +547,7 @@ function MeetingDetail({ meeting }: { meeting: CalendlyMeetingView | null }) {
             text="text-[#f5c298]"
           >
             <p className="font-mono text-[11px] text-[#f5c298]/60">
-              Marked {formatDateTime(meeting.noShowCreatedAt)}
+              Marked {mounted ? formatDateTime(meeting.noShowCreatedAt) : "—"}
             </p>
           </Callout>
         ) : null}
@@ -540,15 +576,56 @@ function AgendaEmptyState({
   );
 }
 
+function AgendaSkeleton() {
+  return (
+    <div className="divide-y divide-[var(--dash-border)]" aria-hidden>
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div className="flex items-center gap-3 py-3 pl-5 pr-4" key={index}>
+          <div className="h-3 w-[4.5rem] animate-pulse rounded bg-white/[0.06] motion-reduce:animate-none" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 w-40 animate-pulse rounded bg-white/[0.06] motion-reduce:animate-none" />
+            <div className="h-2.5 w-28 animate-pulse rounded bg-white/[0.04] motion-reduce:animate-none" />
+          </div>
+          <div className="h-5 w-20 animate-pulse rounded-full bg-white/[0.05] motion-reduce:animate-none" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Dates are formatted in the viewer's timezone/locale, which the server can't
+// know — grouping and time labels must render on the client to stay consistent.
+// useSyncExternalStore returns the server snapshot (false) during SSR and
+// hydration, then re-renders with the client value (true) — no effect needed.
+const subscribeNoop = () => () => {};
+function useMounted() {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false,
+  );
+}
+
 export function CalendlySchedulingWorkspace({ workspace }: SchedulingWorkspaceProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  // Presentation order: newest meetings first (storage returns them ascending).
+  const orderedMeetings = useMemo(
+    () =>
+      [...workspace.meetings].sort(
+        (a, b) => (safeDate(b.startTime)?.getTime() ?? 0) - (safeDate(a.startTime)?.getTime() ?? 0),
+      ),
+    [workspace.meetings],
+  );
+
   const [selectedMeetingId, setSelectedMeetingId] = useState(() =>
-    workspace.meetings[0] ? meetingId(workspace.meetings[0]) : null,
+    orderedMeetings[0] ? meetingId(orderedMeetings[0]) : null,
   );
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const mounted = useMounted();
 
   const stateCounts = useMemo(() => {
     const counts: StateCounts = {
@@ -566,7 +643,7 @@ export function CalendlySchedulingWorkspace({ workspace }: SchedulingWorkspacePr
   const filteredMeetings = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return workspace.meetings.filter((meeting) => {
+    return orderedMeetings.filter((meeting) => {
       const matchesStatus = statusFilter === "all" || meeting.state === statusFilter;
       const haystack = [
         meeting.eventName,
@@ -581,12 +658,12 @@ export function CalendlySchedulingWorkspace({ workspace }: SchedulingWorkspacePr
 
       return matchesStatus && (!normalizedQuery || haystack.includes(normalizedQuery));
     });
-  }, [query, statusFilter, workspace.meetings]);
+  }, [query, statusFilter, orderedMeetings]);
 
   const dayGroups = useMemo(() => groupByDay(filteredMeetings), [filteredMeetings]);
 
   const selectedMeeting =
-    workspace.meetings.find((meeting) => meetingId(meeting) === selectedMeetingId) ??
+    orderedMeetings.find((meeting) => meetingId(meeting) === selectedMeetingId) ??
     filteredMeetings[0] ??
     null;
 
@@ -657,7 +734,7 @@ export function CalendlySchedulingWorkspace({ workspace }: SchedulingWorkspacePr
                   </span>
                   {statusLabel}
                 </span>
-                {connected ? (
+                {connected && mounted ? (
                   <>
                     <span className="h-1 w-1 rounded-full bg-white/15" />
                     <span className="font-mono">
@@ -768,6 +845,8 @@ export function CalendlySchedulingWorkspace({ workspace }: SchedulingWorkspacePr
                     hint="Try a different name or clear the status filter to see everything."
                   />
                 )
+              ) : !mounted ? (
+                <AgendaSkeleton />
               ) : (
                 dayGroups.map((group) => (
                   <div
@@ -807,7 +886,7 @@ export function CalendlySchedulingWorkspace({ workspace }: SchedulingWorkspacePr
             className="dash-animate-in xl:sticky xl:top-6 xl:max-h-[calc(100vh-3rem)] xl:self-start xl:overflow-y-auto dash-scrollbar"
             style={{ animationDelay: "160ms" }}
           >
-            <MeetingDetail meeting={selectedMeeting} />
+            <MeetingDetail meeting={selectedMeeting} mounted={mounted} />
           </aside>
         </div>
       </div>
