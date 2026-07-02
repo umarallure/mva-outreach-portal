@@ -83,7 +83,7 @@ The session lock/audit table must exist in your **production** Supabase project:
 
 ```bash
 supabase link --project-ref <prod-ref>
-supabase db push        # applies supabase/migrations/20260617_create_outreach_gologin_sessions.sql
+supabase db push        # applies all files in supabase/migrations/
 ```
 
 (or paste that SQL file into the Supabase SQL editor). Also confirm operator rows exist in
@@ -101,10 +101,20 @@ use it). `NEXT_PUBLIC_*` are exposed to the browser (intended); everything else 
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | prod Supabase URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | prod anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | prod service-role key for Calendly webhook and cron writes |
 | `GOLOGIN_API_TOKEN` | GoLogin token (server REST start/stop) |
 | `OUTREACH_SESSION_ENCRYPTION_KEY` | from step 0 |
 | `RELAY_JWT_SECRET` | **same value as the gateway** |
 | `NEXT_PUBLIC_BROWSER_GATEWAY_URL` | `wss://outreach-gateway.fly.dev` (from step 1) |
+| `CALENDLY_WEBHOOK_SIGNING_KEY` | custom Calendly webhook signing key |
+| `CRON_SECRET` | bearer token for `/api/cron/calendly-sync` |
+| `CALENDLY_INSURANCE_API_TOKEN` | Insurance Scheduling Calendly account token |
+| `CALENDLY_INSURANCE_USER_URI` | optional Insurance Scheduling user URI override |
+| `CALENDLY_INSURANCE_ORGANIZATION_URI` | optional Insurance Scheduling organization URI override |
+| `CALENDLY_MVA_API_TOKEN` | MVA Scheduling Calendly account token |
+| `CALENDLY_MVA_USER_URI` | optional MVA Scheduling user URI override |
+| `CALENDLY_MVA_ORGANIZATION_URI` | optional MVA Scheduling organization URI override |
+| `CALENDLY_BACKFILL_LOOKBACK_DAYS` | optional, defaults to `90` |
 | `GOLOGIN_PROFILE_PUBLISHER_KELLER` … (all 8) | the profile ids — **required**, accounts read these from env |
 | `OUTREACH_SESSION_STALE_MINUTES` | `120` (optional) |
 | `FLOWCHAT_URL_*`, `LINKEDIN_URL_*`, `DEFAULT_TARGET_URL_*` | optional — FlowChat pipeline URLs are already hardcoded in `src/config/pipelines.ts`; env overrides them if set |
@@ -136,7 +146,15 @@ use it). `NEXT_PUBLIC_*` are exposed to the browser (intended); everything else 
 3. Click into the page, type, scroll, use the address bar / back-forward.
 4. DevTools → Network → WS: confirm the connection is `wss://…/cdp?ticket=…` and the GoLogin
    token never appears client-side.
-5. Leave the view idle ~3 min → it should stay connected (keepalive), not drop.
+5. Leave the view idle ~3 min and confirm it stays connected (keepalive), not drop.
+6. In Calendly Teams, create webhook subscriptions for `invitee.created`,
+   `invitee.canceled`, `invitee_no_show.created`, and `invitee_no_show.deleted`.
+   Use:
+   - `https://your-portal.com/api/calendly/webhook?account=insurance`
+   - `https://your-portal.com/api/calendly/webhook?account=mva`
+7. Trigger one staging booking, cancellation, reschedule, and no-show event, then confirm
+   the Scheduling pages show updated webhook time, sync time, status, invitee details,
+   Q&A, UTM fields, and cancellation/no-show metadata.
 
 ---
 
@@ -148,6 +166,8 @@ use it). `NEXT_PUBLIC_*` are exposed to the browser (intended); everything else 
 - [ ] Portal served over HTTPS and `NEXT_PUBLIC_BROWSER_GATEWAY_URL` is **`wss://`** (an `ws://` gateway from an `https://` page is blocked as mixed content).
 - [ ] Viewer tickets are short-lived (60s) and signed — already enforced.
 - [ ] Supabase RLS / `app_users` roles correct; only intended operators have access.
+- [ ] Calendly webhook signing key is configured in Calendly and Vercel with the same value.
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` is server-only and never exposed through `NEXT_PUBLIC_*`.
 - [ ] Consider rate-limiting `POST /api/gologin/sessions/[id]/viewer-ticket` (host-level or in-route).
 
 ## Operational notes

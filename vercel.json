@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/calendly-sync",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

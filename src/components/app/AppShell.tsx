@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronDown,
+  CalendarDays,
   ExternalLink,
   LayoutDashboard,
   LogOut,
@@ -39,16 +40,24 @@ type NavGroup = {
   pipelines: NavPipeline[];
 };
 
+type SchedulingNavItem = {
+  id: "insurance" | "mva";
+  label: string;
+  href: string;
+  configured: boolean;
+};
+
 type AppShellProps = {
   children: React.ReactNode;
   profile: AppUserProfile;
   navigation: NavGroup[];
+  schedulingNavigation: SchedulingNavItem[];
 };
 
 const linkBase =
   "flex min-h-9 items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#AE4010]/30";
 
-export function AppShell({ children, profile, navigation }: AppShellProps) {
+export function AppShell({ children, profile, navigation, schedulingNavigation }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -149,6 +158,46 @@ export function AppShell({ children, profile, navigation }: AppShellProps) {
               <LayoutDashboard className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed ? <span>Dashboard</span> : null}
             </Link>
+
+            <div className={sidebarCollapsed ? "mt-3 space-y-2" : "mt-4"}>
+              {!sidebarCollapsed ? (
+                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/30">
+                  Scheduling
+                </p>
+              ) : null}
+              <div className="space-y-1">
+                {schedulingNavigation.map((item) => {
+                  const active = isActive(item.href);
+
+                  return (
+                    <Link
+                      className={`${linkBase} ${
+                        active
+                          ? "border-[#AE4010]/25 bg-[#AE4010]/12 text-[#f4a261]"
+                          : "text-white/62 hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
+                      } ${sidebarCollapsed ? "justify-center px-0" : "justify-between"}`}
+                      href={item.href}
+                      key={item.id}
+                      onClick={() => setMobileOpen(false)}
+                      title={sidebarCollapsed ? item.label : undefined}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <CalendarDays className="h-4 w-4 shrink-0" />
+                        {!sidebarCollapsed ? <span className="truncate">{item.label}</span> : null}
+                      </span>
+                      {!sidebarCollapsed ? (
+                        <span
+                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                            item.configured ? "bg-emerald-400" : "bg-amber-400"
+                          }`}
+                          title={item.configured ? "Ready" : "Setup pending"}
+                        />
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
 
             <div className="mt-4 space-y-2">
               {navigation.map((group) => {
